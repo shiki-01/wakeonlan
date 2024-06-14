@@ -9,36 +9,44 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
+	import { user } from '$lib/store';
 	import { auth, db } from '$lib/firebase';
 	import {
 		onAuthStateChanged,
 		signInWithPopup,
 		GoogleAuthProvider,
-		type User
+
+		type UserInfo
+
 	} from 'firebase/auth';
 	import { addDoc, collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 
 	async function wakeOnLan(mac: string, address: string, port: number) {
 		try {
-			const postData = new URLSearchParams();
-			postData.append('mac', mac);
-			postData.append('address', address);
-			postData.append('port', port.toString());
+			const body = JSON.stringify({
+				mac: mac,
+				address: address,
+				port: port
+			});
 
 			const response = await fetch('/api', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/x-www-form-urlencoded'
+					'Content-Type': 'application/json'
 				},
-				body: postData
+				body: body
 			});
-			console.log(response);
+			console.log(await response.json());
 		} catch (error) {
 			console.error('Error:', error);
 		}
 	}
 
-	let userInfo: User | null = null;
+	let userInfo: UserInfo | null = null;
+
+	user.subscribe(($user) => {
+        userInfo = $user;
+    });
 
 	async function getDevices() {
 		if (!userInfo) {
@@ -55,6 +63,7 @@
 						name: doc.data().name,
 						ip: doc.data().ip,
 						deviceIp: doc.data().deviceIp,
+						mac: doc.data().mac,
 						port: doc.data().port
 					}) as Device
 			)
