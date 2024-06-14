@@ -18,12 +18,6 @@
 	} from 'firebase/auth';
 	import { addDoc, collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 
-	interface PostData {
-		mac: string;
-		address: string;
-		port: number;
-	}
-
 	async function wakeOnLan(mac: string, address: string, port: number) {
 		try {
 			const postData = new URLSearchParams();
@@ -31,7 +25,7 @@
 			postData.append('address', address);
 			postData.append('port', port.toString());
 
-			const response = await fetch('/send-magic-packet', {
+			const response = await fetch('/api', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/x-www-form-urlencoded'
