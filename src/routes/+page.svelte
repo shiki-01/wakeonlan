@@ -8,7 +8,7 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { onMount } from 'svelte';
-	import { authStore } from '$lib/store';
+	import { writable } from 'svelte/store';
 	import { auth, db } from '$lib/firebase';
 	import {
 		onAuthStateChanged,
@@ -16,14 +16,56 @@
 		GoogleAuthProvider,
 		type User
 	} from 'firebase/auth';
-	import { collection, getDocs, query, where } from 'firebase/firestore';
+	import { addDoc, collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
+
+	interface PostData {
+		mac: string;
+		address: string;
+		port: number;
+	}
+
+	async function wakeOnLan(mac: string, address: string, port: number) {
+		try {
+			const postData = new URLSearchParams();
+			postData.append('mac', mac);
+			postData.append('address', address);
+			postData.append('port', port.toString());
+
+			const response = await fetch('/send-magic-packet', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded'
+				},
+				body: postData
+			});
+			console.log(response);
+		} catch (error) {
+			console.error('Error:', error);
+		}
+	}
 
 	let userInfo: User | null = null;
 
-	onAuthStateChanged(auth, (user) => {
-		authStore.set({ loggedIn: !!user, user: user });
-		userInfo = user;
-	});
+	async function getDevices() {
+		if (!userInfo) {
+			return;
+		}
+		const userQuery = query(collection(db, 'devices'), where('ownerId', '==', userInfo.uid));
+		const querySnapshot = await getDocs(userQuery);
+		devices.set(
+			querySnapshot.docs.map(
+				(doc) =>
+					({
+						id: doc.id,
+						ownerId: doc.data().ownerId,
+						name: doc.data().name,
+						ip: doc.data().ip,
+						deviceIp: doc.data().deviceIp,
+						port: doc.data().port
+					}) as Device
+			)
+		);
+	}
 
 	function login() {
 		if (userInfo) {
@@ -34,34 +76,94 @@
 		signInWithPopup(auth, provider)
 			.then((result) => {
 				console.log('ログイン成功');
-				console.log(result.user);
 			})
 			.catch((error) => {
 				console.log('ログイン失敗', error);
 			});
 	}
 
-	let devices: any[] = [];
+	let addName = '';
+	let addIp = '';
+	let addDeviceIp = '';
+	let addMac = '';
+	let addPort = '';
 
-	onMount(async () => {
-		if (auth.currentUser) {
-			const userQuery = query(
-				collection(db, 'devices'),
-				where('ownerId', '==', auth.currentUser.uid)
-			);
-			const querySnapshot = await getDocs(userQuery);
-			devices = querySnapshot.docs.map((doc) => doc.data());
+	async function addDevice() {
+		if (
+			addName === '' ||
+			addIp === '' ||
+			addDeviceIp === '' ||
+			addMac === '' ||
+			addPort === '' ||
+			!userInfo
+		) {
+			return;
 		}
+		const newDevice = {
+			ownerId: userInfo.uid,
+			name: addName,
+			ip: addIp,
+			deviceIp: addDeviceIp,
+			mac: addMac,
+			port: addPort
+		};
+		addDoc(collection(db, 'devices'), newDevice);
+		addName = '';
+		addIp = '';
+		addDeviceIp = '';
+		addMac = '';
+		addPort = '';
+		await getDevices();
+	}
+
+	async function deleteDevice() {
+		if (!userInfo) {
+			return;
+		}
+		const device = doc(db, 'devices', editId);
+		deleteDoc(device);
+		await getDevices();
+	}
+
+	interface Device {
+		id: string;
+		ownerId?: string;
+		name: string;
+		ip: string;
+		deviceIp: string;
+		mac: string;
+		port: string;
+	}
+
+	let devices = writable<Device[]>([]);
+
+	onMount(() => {
+		onAuthStateChanged(auth, async (user) => {
+			userInfo = user;
+			if (user) {
+				await getDevices();
+			} else {
+				devices.set([]);
+			}
+		});
 	});
 
 	let open = false;
 	let edit = false;
+	let editId = '';
 	let deviceName = '';
 	let ipAddress = '';
+	let deviceIp = '';
+	let mac = '';
+	let port = '';
 
-	function startEdit(device: { name: string; ip: string }) {
+	function startEdit(device: Device) {
+		editId = device.id;
 		deviceName = device.name;
 		ipAddress = device.ip;
+		deviceIp = device.deviceIp;
+		mac = device.mac;
+		port = device.port;
 		edit = true;
 	}
 	const isDesktop = mediaQuery('(min-width: 768px)');
@@ -81,30 +183,37 @@
 						<Card.Content>
 							<div class="flex w-full max-w-sm flex-col gap-1.5">
 								<Label id="deviceName">Device Name</Label>
-								<Input id="deviceName" placeholder="enter your key" />
+								<Input id="deviceName" placeholder="enter your key" bind:value={addName} />
 							</div>
 						</Card.Content>
 						<Card.Content>
 							<div class="flex w-full max-w-sm flex-col gap-1.5">
 								<Label id="ipAddress">Host Name / IP address / Broadcast ddress</Label>
-								<Input id="ipAddress" placeholder="enter your key" />
+								<Input id="ipAddress" placeholder="enter your key" bind:value={addIp} />
 							</div>
 						</Card.Content>
 						<Card.Content>
 							<div class="flex w-full max-w-sm flex-col gap-1.5">
 								<Label for="dAddress">Device IP address</Label>
-								<Input id="dAddress" placeholder="enter your key" />
+								<Input id="dAddress" placeholder="enter your key" bind:value={addDeviceIp} />
+							</div>
+						</Card.Content>
+						<Card.Content>
+							<div class="flex w-full max-w-sm flex-col gap-1.5">
+								<Label for="mac">MAC Address</Label>
+								<Input id="mac" placeholder="enter your key" bind:value={addMac} />
 							</div>
 						</Card.Content>
 						<Card.Content>
 							<div class="flex w-full max-w-sm flex-col gap-1.5">
 								<Label for="port">Number your Port</Label>
-								<Input id="port" placeholder="enter your key" />
+								<Input id="port" placeholder="enter your key" bind:value={addPort} />
 							</div>
 						</Card.Content>
 						<Card.Footer class="flex gap-2">
 							<Button
 								on:click={() => {
+									addDevice();
 									open = !open;
 								}}>Save</Button
 							>
@@ -140,6 +249,12 @@
 						</Card.Content>
 						<Card.Content>
 							<div class="flex w-full max-w-sm flex-col gap-1.5">
+								<Label for="email">MAC Address</Label>
+								<Input type="email" id="email" placeholder="enter your key" />
+							</div>
+						</Card.Content>
+						<Card.Content>
+							<div class="flex w-full max-w-sm flex-col gap-1.5">
 								<Label for="email">Number your Port</Label>
 								<Input type="email" id="email" placeholder="enter your key" />
 							</div>
@@ -168,10 +283,10 @@
 </div>
 
 <div class="mt-4 flex flex-col gap-4">
-	{#if devices.length === 0}
+	{#if $devices.length === 0}
 		<p>No devices found</p>
 	{:else}
-		{#each devices as device}
+		{#each $devices as device}
 			<Card.Root>
 				<Card.Header>
 					<Card.Title>{device.name}</Card.Title>
@@ -182,7 +297,11 @@
 					<p>Port: {device.port}</p>
 				</Card.Content>
 				<Card.Footer class="flex gap-2">
-					<Button>Connect</Button>
+					<Button
+						on:click={() => {
+							wakeOnLan(device.mac, device.ip, parseInt(device.port));
+						}}>Connect</Button
+					>
 					<Button
 						on:click={() => {
 							edit = !edit;
@@ -225,6 +344,12 @@
 					</Card.Content>
 					<Card.Content>
 						<div class="flex w-full max-w-sm flex-col gap-1.5">
+							<Label for="mac">MAC Address</Label>
+							<Input id="mac" placeholder="enter your key" />
+						</div>
+					</Card.Content>
+					<Card.Content>
+						<div class="flex w-full max-w-sm flex-col gap-1.5">
 							<Label for="port">Number your Port</Label>
 							<Input id="port" placeholder="enter your key" />
 						</div>
@@ -240,6 +365,12 @@
 								edit = !edit;
 							}}>Cancel</Button
 						>
+						<Button
+							on:click={() => {
+								deleteDevice();
+								edit = !edit;
+							}}>Delete</Button
+						>
 					</Card.Footer>
 				</Card.Root>
 			</Dialog.Content>
@@ -253,12 +384,12 @@
 						<Card.Title>IP Editing</Card.Title>
 						<Card.Description>Settings related to ip address</Card.Description>
 					</Card.Header>
-                    <Card.Content>
-                        <div class="flex w-full max-w-sm flex-col gap-1.5">
+					<Card.Content>
+						<div class="flex w-full max-w-sm flex-col gap-1.5">
 							<Label id="deviceName">Device Name</Label>
 							<Input id="deviceName" placeholder="enter your key" bind:value={deviceName} />
 						</div>
-                    </Card.Content>
+					</Card.Content>
 					<Card.Content>
 						<div class="flex w-full max-w-sm flex-col gap-1.5">
 							<Label for="email">Host Name / IP address / Broadcast ddress</Label>
@@ -268,6 +399,12 @@
 					<Card.Content>
 						<div class="flex w-full max-w-sm flex-col gap-1.5">
 							<Label for="email">Device IP address</Label>
+							<Input type="email" id="email" placeholder="enter your key" />
+						</div>
+					</Card.Content>
+					<Card.Content>
+						<div class="flex w-full max-w-sm flex-col gap-1.5">
+							<Label for="email">MAC Address</Label>
 							<Input type="email" id="email" placeholder="enter your key" />
 						</div>
 					</Card.Content>
@@ -283,6 +420,11 @@
 							on:click={() => {
 								edit = !edit;
 							}}>Cancel</Button
+						>
+						<Button
+							on:click={() => {
+								edit = !edit;
+							}}>Delete</Button
 						>
 					</Card.Footer>
 				</Card.Root>
