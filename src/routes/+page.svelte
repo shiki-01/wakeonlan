@@ -15,11 +15,18 @@
 		onAuthStateChanged,
 		signInWithPopup,
 		GoogleAuthProvider,
-
 		type UserInfo
-
 	} from 'firebase/auth';
-	import { addDoc, collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
+	import {
+		addDoc,
+		collection,
+		deleteDoc,
+		doc,
+		getDocs,
+		query,
+		updateDoc,
+		where
+	} from 'firebase/firestore';
 
 	async function wakeOnLan(mac: string, address: string, port: number) {
 		try {
@@ -42,11 +49,53 @@
 		}
 	}
 
+	async function shutdownComputer(address: string, port: number) {
+		try {
+			const body = JSON.stringify({
+				action: 'shutdown',
+				address: address,
+				port: port
+			});
+
+			const response = await fetch('/api/action', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: body
+			});
+			console.log(await response.json());
+		} catch (error) {
+			console.error('Error:', error);
+		}
+	}
+
+	async function sleepComputer(address: string, port: number) {
+		try {
+			const body = JSON.stringify({
+				action: 'sleep',
+				address: address,
+				port: port
+			});
+
+			const response = await fetch('/api/action', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: body
+			});
+			console.log(await response.json());
+		} catch (error) {
+			console.error('Error:', error);
+		}
+	}
+
 	let userInfo: UserInfo | null = null;
 
 	user.subscribe(($user) => {
-        userInfo = $user;
-    });
+		userInfo = $user;
+	});
 
 	async function getDevices() {
 		if (!userInfo) {
@@ -119,6 +168,20 @@
 		await getDevices();
 	}
 
+	async function editDevice() {
+		if (!userInfo) {
+			return;
+		}
+		updateDoc(doc(db, 'devices', editId), {
+			name: deviceName,
+			ip: ipAddress,
+			deviceIp: deviceIp,
+			mac: mac,
+			port: port
+		});
+		await getDevices();
+	}
+
 	async function deleteDevice() {
 		if (!userInfo) {
 			return;
@@ -153,6 +216,8 @@
 
 	let open = false;
 	let edit = false;
+	let connect = false;
+	let isDelete = false;
 	let editId = '';
 	let deviceName = '';
 	let ipAddress = '';
@@ -167,7 +232,6 @@
 		deviceIp = device.deviceIp;
 		mac = device.mac;
 		port = device.port;
-		edit = true;
 	}
 	const isDesktop = mediaQuery('(min-width: 768px)');
 </script>
@@ -302,7 +366,8 @@
 				<Card.Footer class="flex gap-2">
 					<Button
 						on:click={() => {
-							wakeOnLan(device.mac, device.ip, parseInt(device.port));
+							startEdit(device);
+							connect = !connect;
 						}}>Connect</Button
 					>
 					<Button
@@ -317,121 +382,222 @@
 	{/if}
 </div>
 
-{#if edit}
-	{#if $isDesktop}
-		<Dialog.Root bind:open={edit}>
-			<Dialog.Trigger>Edit Device</Dialog.Trigger>
-			<Dialog.Content class="w-[350px]">
-				<Card.Root class="w-full border-none">
-					<Card.Header>
-						<Card.Title>IP Editing</Card.Title>
-						<Card.Description>Settings related to ip address</Card.Description>
-					</Card.Header>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label id="deviceName">Device Name</Label>
-							<Input id="deviceName" placeholder="enter your key" bind:value={deviceName} />
-						</div>
-					</Card.Content>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label id="ipAddress">Host Name / IP address / Broadcast ddress</Label>
-							<Input id="ipAddress" placeholder="enter your key" />
-						</div>
-					</Card.Content>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label for="dAddress">Device IP address</Label>
-							<Input id="dAddress" placeholder="enter your key" />
-						</div>
-					</Card.Content>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label for="mac">MAC Address</Label>
-							<Input id="mac" placeholder="enter your key" />
-						</div>
-					</Card.Content>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label for="port">Number your Port</Label>
-							<Input id="port" placeholder="enter your key" />
-						</div>
-					</Card.Content>
-					<Card.Footer class="flex gap-2">
-						<Button
-							on:click={() => {
-								edit = !edit;
-							}}>Save</Button
-						>
-						<Button
-							on:click={() => {
-								edit = !edit;
-							}}>Cancel</Button
-						>
-						<Button
-							on:click={() => {
-								deleteDevice();
-								edit = !edit;
-							}}>Delete</Button
-						>
-					</Card.Footer>
-				</Card.Root>
-			</Dialog.Content>
-		</Dialog.Root>
-	{:else}
-		<Drawer.Root bind:open={edit}>
-			<Drawer.Trigger>Edit Device</Drawer.Trigger>
-			<Drawer.Content class="flex justify-center">
-				<Card.Root class="w-full border-none">
-					<Card.Header>
-						<Card.Title>IP Editing</Card.Title>
-						<Card.Description>Settings related to ip address</Card.Description>
-					</Card.Header>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label id="deviceName">Device Name</Label>
-							<Input id="deviceName" placeholder="enter your key" bind:value={deviceName} />
-						</div>
-					</Card.Content>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label for="email">Host Name / IP address / Broadcast ddress</Label>
-							<Input type="email" id="email" placeholder="enter your key" />
-						</div>
-					</Card.Content>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label for="email">Device IP address</Label>
-							<Input type="email" id="email" placeholder="enter your key" />
-						</div>
-					</Card.Content>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label for="email">MAC Address</Label>
-							<Input type="email" id="email" placeholder="enter your key" />
-						</div>
-					</Card.Content>
-					<Card.Content>
-						<div class="flex w-full max-w-sm flex-col gap-1.5">
-							<Label for="email">Number your Port</Label>
-							<Input type="email" id="email" placeholder="enter your key" />
-						</div>
-					</Card.Content>
-					<Card.Footer class="flex gap-2">
-						<Button>Save</Button>
-						<Button
-							on:click={() => {
-								edit = !edit;
-							}}>Cancel</Button
-						>
-						<Button
-							on:click={() => {
-								edit = !edit;
-							}}>Delete</Button
-						>
-					</Card.Footer>
-				</Card.Root>
-			</Drawer.Content>
-		</Drawer.Root>
-	{/if}
+{#if $isDesktop}
+	<Dialog.Root bind:open={connect}>
+		<Dialog.Content class="w-[350px]">
+			<Card.Root class="w-full border-none">
+				<Card.Header>
+					<Card.Title>Connect</Card.Title>
+					<Card.Description>Select the action you want to perform</Card.Description>
+				</Card.Header>
+				<Card.Footer class="flex gap-2">
+					<Button
+						on:click={() => {
+							wakeOnLan(mac, deviceIp, Number(port));
+							connect = !connect;
+						}}>Wake On Lan</Button
+					>
+					<Button
+						on:click={() => {
+							shutdownComputer(deviceIp, Number(port));
+							connect = !connect;
+						}}>Shutdown</Button
+					>
+					<Button
+						on:click={() => {
+							sleepComputer(deviceIp, Number(port));
+							connect = !connect;
+						}}>Sleep</Button
+					>
+				</Card.Footer>
+			</Card.Root>
+		</Dialog.Content>
+	</Dialog.Root>
+{:else}
+	<Drawer.Root bind:open={connect}>
+		<Drawer.Content class="flex justify-center">
+			<Card.Root class="w-full border-none">
+				<Card.Header>
+					<Card.Title>IP Setting</Card.Title>
+					<Card.Description>Settings related to ip address</Card.Description>
+				</Card.Header>
+				<Card.Footer class="flex gap-2">
+					<Button>Wake On Lan</Button>
+					<Button>Shutdown</Button>
+					<Button>Sleep</Button>
+				</Card.Footer>
+			</Card.Root>
+		</Drawer.Content>
+	</Drawer.Root>
+{/if}
+
+{#if $isDesktop}
+	<Dialog.Root bind:open={edit}>
+		<Dialog.Content class="w-[350px]">
+			<Card.Root class="w-full border-none">
+				<Card.Header>
+					<Card.Title>IP Editing</Card.Title>
+					<Card.Description>Settings related to ip address</Card.Description>
+				</Card.Header>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label id="deviceName">Device Name</Label>
+						<Input id="deviceName" placeholder="enter your key" bind:value={deviceName} />
+					</div>
+				</Card.Content>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label id="ipAddress">Host Name / IP address / Broadcast ddress</Label>
+						<Input id="ipAddress" placeholder="enter your key" bind:value={ipAddress} />
+					</div>
+				</Card.Content>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label for="dAddress">Device IP address</Label>
+						<Input id="dAddress" placeholder="enter your key" bind:value={deviceIp} />
+					</div>
+				</Card.Content>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label for="mac">MAC Address</Label>
+						<Input id="mac" placeholder="enter your key" bind:value={mac} />
+					</div>
+				</Card.Content>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label for="port">Number your Port</Label>
+						<Input id="port" placeholder="enter your key" bind:value={port} />
+					</div>
+				</Card.Content>
+				<Card.Footer class="flex gap-2">
+					<Button
+						on:click={() => {
+							editDevice();
+							edit = !edit;
+						}}>Save</Button
+					>
+					<Button
+						on:click={() => {
+							edit = !edit;
+						}}>Cancel</Button
+					>
+					<Button
+						on:click={() => {
+							edit = !edit;
+							isDelete = !isDelete;
+						}}>Delete</Button
+					>
+				</Card.Footer>
+			</Card.Root>
+		</Dialog.Content>
+	</Dialog.Root>
+{:else}
+	<Drawer.Root bind:open={edit}>
+		<Drawer.Content class="flex justify-center">
+			<Card.Root class="w-full border-none">
+				<Card.Header>
+					<Card.Title>IP Editing</Card.Title>
+					<Card.Description>Settings related to ip address</Card.Description>
+				</Card.Header>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label id="deviceName">Device Name</Label>
+						<Input id="deviceName" placeholder="enter your key" bind:value={deviceName} />
+					</div>
+				</Card.Content>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label for="email">Host Name / IP address / Broadcast ddress</Label>
+						<Input type="email" id="email" placeholder="enter your key" bind:value={ipAddress} />
+					</div>
+				</Card.Content>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label for="email">Device IP address</Label>
+						<Input type="email" id="email" placeholder="enter your key" bind:value={deviceIp} />
+					</div>
+				</Card.Content>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label for="email">MAC Address</Label>
+						<Input type="email" id="email" placeholder="enter your key" bind:value={mac} />
+					</div>
+				</Card.Content>
+				<Card.Content>
+					<div class="flex w-full max-w-sm flex-col gap-1.5">
+						<Label for="email">Number your Port</Label>
+						<Input type="email" id="email" placeholder="enter your key" bind:value={port} />
+					</div>
+				</Card.Content>
+				<Card.Footer class="flex gap-2">
+					<Button
+						on:click={() => {
+							editDevice();
+						}}>Save</Button
+					>
+					<Button
+						on:click={() => {
+							edit = !edit;
+						}}>Cancel</Button
+					>
+					<Button
+						on:click={() => {
+							edit = !edit;
+							isDelete = !isDelete;
+						}}>Delete</Button
+					>
+				</Card.Footer>
+			</Card.Root>
+		</Drawer.Content>
+	</Drawer.Root>
+{/if}
+
+{#if $isDesktop}
+	<Dialog.Root bind:open={isDelete}>
+		<Dialog.Content class="w-[350px]">
+			<Card.Root class="w-full border-none">
+				<Card.Header>
+					<Card.Title>Are you sure you want to delete this device?</Card.Title>
+					<Card.Description>You can't undo this action.</Card.Description>
+				</Card.Header>
+				<Card.Footer class="flex gap-2">
+					<Button
+						on:click={() => {
+							deleteDevice();
+							isDelete = !isDelete;
+						}}>Yes</Button
+					>
+					<Button
+						on:click={() => {
+							isDelete = !isDelete;
+						}}>No</Button
+					>
+				</Card.Footer>
+			</Card.Root>
+		</Dialog.Content>
+	</Dialog.Root>
+{:else}
+	<Drawer.Root bind:open={isDelete}>
+		<Drawer.Content class="flex justify-center">
+			<Card.Root class="w-full border-none">
+				<Card.Header>
+					<Card.Title>Are you sure you want to delete this device?</Card.Title>
+					<Card.Description>You can't undo this action.</Card.Description>
+				</Card.Header>
+				<Card.Footer class="flex gap-2">
+					<Button
+						on:click={() => {
+							deleteDevice();
+							isDelete = !isDelete;
+						}}>Yes</Button
+					>
+					<Button
+						on:click={() => {
+							isDelete = !isDelete;
+						}}>No</Button
+					>
+				</Card.Footer>
+			</Card.Root>
+		</Drawer.Content>
+	</Drawer.Root>
 {/if}
