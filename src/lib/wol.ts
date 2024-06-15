@@ -7,9 +7,10 @@ export function createMagicPacket(mac: string, globalIP: string, port: number, d
             return reject(new Error('Invalid MAC address'));
         }
 
-        const buffer = Buffer.alloc(6 + (6 * 16), 0xff);
+        let buffer = Buffer.alloc(6, 0xff);
+        const macBuffer = Buffer.from(parts.join(''), 'hex');
         for (let i = 0; i < 16; i++) {
-            buffer.write(parts.join(''), 6 + (i * 6), 'hex');
+            buffer = Buffer.concat([buffer, macBuffer]);
         }
 
         const client = dgram.createSocket('udp4');
