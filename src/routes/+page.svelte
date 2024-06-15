@@ -424,9 +424,21 @@
 					<Card.Description>Settings related to ip address</Card.Description>
 				</Card.Header>
 				<Card.Footer class="flex gap-2">
-					<Button>Wake On Lan</Button>
-					<Button>Shutdown</Button>
-					<Button>Sleep</Button>
+					<Button
+						on:click={() => {
+							wakeOnLan(mac, ipAddress, parseInt(port), deviceIp);
+						}}>Wake On Lan</Button
+					>
+					<Button
+						on:click={() => {
+							shutdownComputer(deviceIp, Number(port));
+						}}>Shutdown</Button
+					>
+					<Button
+						on:click={() => {
+							sleepComputer(deviceIp, Number(port));
+						}}>Sleep</Button
+					>
 				</Card.Footer>
 			</Card.Root>
 		</Drawer.Content>
