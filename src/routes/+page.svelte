@@ -427,16 +427,19 @@
 					<Button
 						on:click={() => {
 							wakeOnLan(mac, ipAddress, parseInt(port), deviceIp);
+							connect = !connect;
 						}}>Wake On Lan</Button
 					>
 					<Button
 						on:click={() => {
 							shutdownComputer(deviceIp, Number(port));
+							connect = !connect;
 						}}>Shutdown</Button
 					>
 					<Button
 						on:click={() => {
 							sleepComputer(deviceIp, Number(port));
+							connect = !connect;
 						}}>Sleep</Button
 					>
 				</Card.Footer>

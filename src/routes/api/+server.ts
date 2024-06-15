@@ -25,7 +25,7 @@ export async function POST({ request }: { request: Request }) {
 
   try {
     await createMagicPacket(mac, safeGlobalIP, parseInt(safePort, 10), safeDeviceIP);
-    return new Response(JSON.stringify({ message: 'Magic packet sent successfully' }), { status: 200 });
+    return new Response(JSON.stringify({ message: `Magic packet sent successfully \n Sending magic packet to ${safeDeviceIP} on port ${safePort} with MAC address ${mac}` }), { status: 200 });
   } catch (error) {
     console.error(error);
     return new Response(JSON.stringify({ message: 'An error occurred' }), { status: 500 });
