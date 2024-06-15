@@ -393,7 +393,7 @@
 				<Card.Footer class="flex gap-2">
 					<Button
 						on:click={() => {
-							wakeOnLan(mac, deviceIp, Number(port));
+							wakeOnLan(mac, deviceIp, parseInt(port));
 							connect = !connect;
 						}}>Wake On Lan</Button
 					>
