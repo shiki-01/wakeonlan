@@ -1,6 +1,6 @@
 import dgram from 'dgram';
 
-export function createMagicPacket(mac: string, address: string | undefined, port: number | undefined) {
+export function createMagicPacket(mac: string, globalIP: string, port: number, deviceIP?: string) {
     return new Promise<void>((resolve, reject) => {
         const parts = mac.match(/[0-9A-Fa-f]{2}/g);
         if (!parts || parts.length !== 6) {
@@ -13,7 +13,9 @@ export function createMagicPacket(mac: string, address: string | undefined, port
         }
 
         const client = dgram.createSocket('udp4');
-        client.send(buffer, port, address, (error) => {
+        const targetIP = deviceIP || globalIP;
+
+        client.send(buffer, port, targetIP, (error) => {
             client.close();
 
             if (error) {

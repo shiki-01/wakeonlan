@@ -28,12 +28,13 @@
 		where
 	} from 'firebase/firestore';
 
-	async function wakeOnLan(mac: string, address: string, port: number) {
+	async function wakeOnLan(mac: string, globalIP: string, port: number, deviceIP: string) {
 		try {
 			const body = JSON.stringify({
 				mac: mac,
-				address: address,
-				port: port
+				globalIP: globalIP,
+				port: port,
+				deviceIP: deviceIP
 			});
 
 			const response = await fetch('/api', {
@@ -361,6 +362,7 @@
 				</Card.Header>
 				<Card.Content>
 					<p>Device IP : {device.deviceIp}</p>
+					<p>MAC: {device.mac}</p>
 					<p>Port: {device.port}</p>
 				</Card.Content>
 				<Card.Footer class="flex gap-2">
@@ -393,7 +395,7 @@
 				<Card.Footer class="flex gap-2">
 					<Button
 						on:click={() => {
-							wakeOnLan(mac, deviceIp, parseInt(port));
+							wakeOnLan(mac, ipAddress, parseInt(port), deviceIp);
 							connect = !connect;
 						}}>Wake On Lan</Button
 					>
