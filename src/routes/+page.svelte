@@ -98,26 +98,55 @@
 		userInfo = $user;
 	});
 
+	interface Status {
+        online: boolean;
+        message: string;
+    }
+
+    async function checkDeviceStatus(ip: string, port: string, deviceIP: string): Promise<boolean> {
+        try {
+            const response = await fetch('/api/status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    globalIP: ip,
+                    port: port,
+                    deviceIP: deviceIP
+                })
+            });
+            const data: Status = await response.json();
+            return data.online;
+        } catch (error) {
+            console.error('Error:', error);
+            return false;
+        }
+    }
+
 	async function getDevices() {
 		if (!userInfo) {
 			return;
 		}
 		const userQuery = query(collection(db, 'devices'), where('ownerId', '==', userInfo.uid));
 		const querySnapshot = await getDocs(userQuery);
-		devices.set(
-			querySnapshot.docs.map(
-				(doc) =>
-					({
-						id: doc.id,
-						ownerId: doc.data().ownerId,
-						name: doc.data().name,
-						ip: doc.data().ip,
-						deviceIp: doc.data().deviceIp,
-						mac: doc.data().mac,
-						port: doc.data().port
-					}) as Device
-			)
+		const devicesWithStatus = await Promise.all(
+			querySnapshot.docs.map(async (doc) => {
+				const deviceData = doc.data();
+				deviceData.isActive = await checkDeviceStatus(deviceData.ip, deviceData.port, deviceData.deviceIp);
+				return {
+					...deviceData,
+					id: doc.id,
+					ownerId: doc.data().ownerId,
+					name: doc.data().name,
+					ip: doc.data().ip,
+					deviceIp: doc.data().deviceIp,
+					mac: doc.data().mac,
+					port: doc.data().port
+				};
+			})
 		);
+		devices.set(devicesWithStatus);
 	}
 
 	function login() {
@@ -200,6 +229,7 @@
 		deviceIp: string;
 		mac: string;
 		port: string;
+		isActive?: boolean;
 	}
 
 	let devices = writable<Device[]>([]);
@@ -357,7 +387,16 @@
 		{#each $devices as device}
 			<Card.Root>
 				<Card.Header>
-					<Card.Title>{device.name}</Card.Title>
+					<Card.Title>
+						<div class="flex justify-between">
+							{device.name}
+							{#if device.isActive}
+								<span class="text-green-500">Active</span>
+							{:else}
+								<span class="text-red-500">Inactive</span>
+							{/if}
+						</div>
+					</Card.Title>
 					<Card.Description>{device.ip}</Card.Description>
 				</Card.Header>
 				<Card.Content>
