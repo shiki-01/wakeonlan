@@ -352,6 +352,12 @@
 						</Card.Header>
 						<Card.Content>
 							<div class="flex w-full max-w-sm flex-col gap-1.5">
+								<Label id="deviceName">Device Name *</Label>
+								<Input id="deviceName" placeholder="enter your key" bind:value={addName} />
+							</div>
+						</Card.Content>
+						<Card.Content>
+							<div class="flex w-full max-w-sm flex-col gap-1.5">
 								<Label for="email">Host Name / IP address / Broadcast ddress</Label>
 								<Input type="email" id="email" placeholder="enter your key" />
 							</div>
