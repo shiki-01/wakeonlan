@@ -1,9 +1,7 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { Firestore, getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_API_KEY,
     authDomain: import.meta.env.VITE_AUTH_DOMAIN,
@@ -14,7 +12,6 @@ const firebaseConfig = {
     measurementId: import.meta.env.VITE_MEASUREMENT_ID
 };
 
-// Initialize Firebase or use the existing app
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const provider = new GoogleAuthProvider();
 const auth = getAuth(app);

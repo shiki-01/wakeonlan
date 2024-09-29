@@ -4,6 +4,19 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			const mode = window.localStorage.getItem('mode') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+			document.documentElement.classList.remove('light', 'dark');
+			if (mode === 'system') {
+				document.documentElement.classList.add(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+			} else {
+				document.documentElement.classList.add(mode);
+			}
+			const lang = window.localStorage.getItem('lang') || navigator.language.split('-')[0];
+			document.documentElement.classList.remove('en', 'ja');
+			document.documentElement.classList.add(lang);
+			document.documentElement.lang = lang;
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
