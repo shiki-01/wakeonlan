@@ -41,8 +41,8 @@
 			<CItem
 				class="gap-5"
 				on:click={() => {
-				$connect = true;
-			}}
+					$connect = true;
+				}}
 			>
 				<div class="flex items-center gap-2">
 					<Icon name="PackagePlus" class="w-4 h-4" />
@@ -52,8 +52,8 @@
 			<CItem
 				class="gap-5"
 				on:click={() => {
-				$edit = true;
-			}}
+					$edit = true;
+				}}
 			>
 				<div class="flex items-center gap-2">
 					<Icon name="PackagePlus" class="w-4 h-4" />
